@@ -1,15 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.newLoc = exports.findId = exports.genApple = exports.clear = exports.isEmpty = exports.randomSpace = exports.randomDir = exports.randomColour = exports.players = exports.grid = void 0;
-const crypto_1 = require("crypto");
+exports.newLoc = exports.findId = exports.genApple = exports.clear = exports.isEmpty = exports.randomSpace = exports.randomDir = exports.randomColour = exports.randomInt = exports.players = exports.grid = void 0;
 exports.grid = [];
 exports.players = [];
+function randomInt(n) {
+    return Math.floor(Math.random() * n);
+}
+exports.randomInt = randomInt;
 function randomColour() {
-    return `rgb(${(0, crypto_1.randomInt)(256)}, ${(0, crypto_1.randomInt)(256)}, ${(0, crypto_1.randomInt)(256)})`;
+    return `rgb(${randomInt(256)}, ${randomInt(256)}, ${randomInt(256)})`;
 }
 exports.randomColour = randomColour;
 function randomDir() {
-    return ['w', 'a', 's', 'd'][(0, crypto_1.randomInt)(4)];
+    return ['w', 'a', 's', 'd'][randomInt(4)];
 }
 exports.randomDir = randomDir;
 function spaceAround(x, y) {
@@ -24,8 +27,8 @@ function spaceAround(x, y) {
 function randomSpace(spawnMode = 0) {
     let x, y;
     do {
-        x = (0, crypto_1.randomInt)(exports.grid.length);
-        y = (0, crypto_1.randomInt)(exports.grid[0].length);
+        x = randomInt(exports.grid.length);
+        y = randomInt(exports.grid[0].length);
     } while (exports.grid[x][y].filled ||
         exports.grid[x][y].isApple ||
         (spawnMode && !spaceAround(x, y)));

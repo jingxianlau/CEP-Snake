@@ -1,8 +1,10 @@
-import { randomInt } from 'crypto'; // im too lazy to code it mb
-
 // game state
 export let grid: Space[][] = [];
 export let players: Player[] = [];
+
+export function randomInt(n: number): number {
+  return Math.floor(Math.random() * n);
+}
 
 export function randomColour() {
   return `rgb(${randomInt(256)}, ${randomInt(256)}, ${randomInt(256)})`;

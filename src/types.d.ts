@@ -19,4 +19,9 @@ interface Player {
     dir: string;
     nextDir: string;
   };
+
+  // gameplay
+  mana: number;
+  dash: number;
+  dist: number;
 }

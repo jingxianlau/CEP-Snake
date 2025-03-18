@@ -46,6 +46,14 @@ function draw() {
 function keyPressed() {
   if (['w', 'a', 's', 'd'].includes(key))
     socket.emit('action', { player: socket.id, dir: key });
+
+  if (key == ' ') {
+    socket.emit('ability', 'dash');
+  } else if (key == 'e') {
+    socket.emit('ability', 'dash5');
+  } else if (key == 'q') {
+    socket.emit('ability', 'uturn');
+  }
 }
 
 function respawn() {

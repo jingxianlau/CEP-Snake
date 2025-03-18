@@ -52,7 +52,10 @@ io.on('connection', socket => {
       ],
       dir: spawnDir,
       nextDir: spawnDir
-    }
+    },
+    mana: 20,
+    dash: 0,
+    dist: 1
   });
   grid[spawn.x][spawn.y] = {
     filled: true,
@@ -87,6 +90,36 @@ io.on('connection', socket => {
     p.snake.nextDir = dir;
   });
 
+  socket.on('ability', type => {
+    const p = findId(socket.id);
+    if (!p) return;
+    if (type === 'dash') {
+      if (p.dash != 0) return;
+      p.dist = 3;
+      p.dash = tickRate * 5;
+    } else if (type === 'dash5') {
+      if (p.mana < 20) return;
+      p.dist = 7;
+      p.mana -= 20;
+    } else if (type === 'uturn') {
+      if (p.mana < 20 || p.snake.segments.length < 2) return;
+
+      // update direction accordingly
+      const seg1 = p.snake.segments[0].coords;
+      const seg2 = p.snake.segments[1].coords;
+      const dx = seg1.x - seg2.x;
+      const dy = seg1.y - seg2.y;
+      if (dy == 0) p.snake.nextDir = dx < 1 ? 'w' : 's';
+      else p.snake.nextDir = dy < 1 ? 'a' : 'd';
+
+      p.snake.segments.reverse();
+      for (let i = 0; i < p.snake.segments.length; i++)
+        p.snake.segments[i].num = i;
+
+      p.mana -= 20;
+    }
+  });
+
   socket.on('disconnect', () => {
     players.splice(
       players.findIndex(val => val.id === socket.id),
@@ -104,36 +137,49 @@ setInterval(() => {
 }, 1000 / tickRate);
 
 function update() {
-  const hitlist: string[] = []; // can't be killed at runtime in case multiple ppl die
-  const processed: string[] = []; // helpful for edge case where snake collides with tail
-  for (let i = 0; i < players.length; i++) {
-    const p = players[i];
-    const c = newLoc(p, processed); // gets new head location based on direction of snake
-    if (c.x === -1 && c.y === -1) {
-      hitlist.push(p.id);
-      continue;
+  let cleared = false;
+  while (!cleared) {
+    cleared = true;
+    const hitlist: string[] = []; // can't be killed at runtime in case multiple ppl die
+    const processed: string[] = []; // helpful for edge case where snake collides with tail
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      if (p.dist-- == 0) continue;
+      else cleared = false;
+
+      const c = newLoc(p, processed); // gets new head location based on direction of snake
+      if (c.x === -1 && c.y === -1) {
+        hitlist.push(p.id);
+        continue;
+      }
+
+      const hasEatenApple = grid[c.x][c.y].isApple;
+      p.snake.segments.push({ num: p.snake.segments.length, coords: c });
+      grid[c.x][c.y] = {
+        filled: true,
+        playerId: p.id,
+        isApple: false
+      };
+
+      if (!hasEatenApple) {
+        const tail = p.snake.segments.shift();
+        if (tail) clear(tail.coords.x, tail.coords.y);
+        p.snake.segments.map(s => s.num--);
+      } else genApple();
+
+      p.snake.dir = p.snake.nextDir;
+
+      processed.push(p.id);
     }
 
-    const hasEatenApple = grid[c.x][c.y].isApple;
-    p.snake.segments.push({ num: p.snake.segments.length, coords: c });
-    grid[c.x][c.y] = {
-      filled: true,
-      playerId: p.id,
-      isApple: false
-    };
-
-    if (!hasEatenApple) {
-      const tail = p.snake.segments.shift();
-      if (tail) clear(tail.coords.x, tail.coords.y);
-      p.snake.segments.map(s => s.num--);
-    } else genApple();
-
-    p.snake.dir = p.snake.nextDir;
-
-    processed.push(p.id);
+    for (const p of hitlist) kill(p);
   }
 
-  for (const p of hitlist) kill(p);
+  players.map(p => {
+    p.dist = 1;
+    p.dash = Math.max(--p.dash, 0);
+    p.mana += 1 / tickRate;
+  });
 }
 
 export function kill(id: string) {
