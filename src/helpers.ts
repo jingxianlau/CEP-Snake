@@ -1,8 +1,4 @@
-import { randomInt } from 'crypto';
-
-// grid traversal
-const ax = [1, -1, 0, 0];
-const ay = [0, 0, 1, -1];
+import { randomInt } from 'crypto'; // im too lazy to code it mb
 
 // game state
 export let grid: Space[][] = [];
@@ -81,21 +77,27 @@ export function findId(id: string): Player | null {
 // returns { x: -1, y: -1 } if it dies
 export function newLoc(p: Player, processed: string[], recurse = false) {
   const head = p.snake.segments[p.snake.segments.length - 1];
-  const { x, y } = head.coords;
+  let { x, y } = head.coords;
+
+  // note: x and y are swapped cos that's how the field obj is defined relative to wasd
   switch (p.snake.nextDir) {
     case 'w':
-      if (!isEmpty(x - 1, y)) return confirmKill({ x: x - 1, y: y });
-      else return { x: x - 1, y: y };
+      x--;
+      break;
     case 'a':
-      if (!isEmpty(x, y - 1)) return confirmKill({ x: x, y: y - 1 });
-      else return { x: x, y: y - 1 };
+      y--;
+      break;
     case 's':
-      if (!isEmpty(x + 1, y)) return confirmKill({ x: x + 1, y: y });
-      else return { x: x + 1, y: y };
+      x++;
+      break;
     case 'd':
-      if (!isEmpty(x, y + 1)) return confirmKill({ x: x, y: y + 1 });
-      else return { x: x, y: y + 1 };
+      y++;
+      break;
+    default:
+      return { x: -1, y: -1 };
   }
+  if (!isEmpty(x, y)) return confirmKill({ x, y });
+  else return { x, y };
 
   // EDGE CASE (snake hits tail)
   function confirmKill(c: { x: number; y: number }) {
@@ -119,6 +121,4 @@ export function newLoc(p: Player, processed: string[], recurse = false) {
     }
     return { x: -1, y: -1 };
   }
-
-  return { x: -1, y: -1 }; // should never run
 }

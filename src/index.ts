@@ -114,19 +114,19 @@ function update() {
       continue;
     }
 
+    const hasEatenApple = grid[c.x][c.y].isApple;
     p.snake.segments.push({ num: p.snake.segments.length, coords: c });
-
-    if (!grid[c.x][c.y].isApple) {
-      const tail = p.snake.segments.shift();
-      if (tail) clear(tail.coords.x, tail.coords.y);
-      p.snake.segments.map(s => s.num--);
-    }
-
     grid[c.x][c.y] = {
       filled: true,
       playerId: p.id,
       isApple: false
     };
+
+    if (!hasEatenApple) {
+      const tail = p.snake.segments.shift();
+      if (tail) clear(tail.coords.x, tail.coords.y);
+      p.snake.segments.map(s => s.num--);
+    } else genApple();
 
     p.snake.dir = p.snake.nextDir;
 

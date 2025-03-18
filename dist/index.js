@@ -98,18 +98,21 @@ function update() {
             hitlist.push(p.id);
             continue;
         }
+        const hasEatenApple = helpers_1.grid[c.x][c.y].isApple;
         p.snake.segments.push({ num: p.snake.segments.length, coords: c });
-        if (!helpers_1.grid[c.x][c.y].isApple) {
-            const tail = p.snake.segments.shift();
-            if (tail)
-                (0, helpers_1.clear)(tail.coords.x, tail.coords.y);
-            p.snake.segments.map(s => s.num--);
-        }
         helpers_1.grid[c.x][c.y] = {
             filled: true,
             playerId: p.id,
             isApple: false
         };
+        if (!hasEatenApple) {
+            const tail = p.snake.segments.shift();
+            if (tail)
+                (0, helpers_1.clear)(tail.coords.x, tail.coords.y);
+            p.snake.segments.map(s => s.num--);
+        }
+        else
+            (0, helpers_1.genApple)();
         p.snake.dir = p.snake.nextDir;
         processed.push(p.id);
     }

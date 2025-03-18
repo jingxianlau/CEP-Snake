@@ -2,8 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.newLoc = exports.findId = exports.genApple = exports.clear = exports.isEmpty = exports.randomSpace = exports.randomDir = exports.randomColour = exports.players = exports.grid = void 0;
 const crypto_1 = require("crypto");
-const ax = [1, -1, 0, 0];
-const ay = [0, 0, 1, -1];
 exports.grid = [];
 exports.players = [];
 function randomColour() {
@@ -71,29 +69,27 @@ function findId(id) {
 exports.findId = findId;
 function newLoc(p, processed, recurse = false) {
     const head = p.snake.segments[p.snake.segments.length - 1];
-    const { x, y } = head.coords;
+    let { x, y } = head.coords;
     switch (p.snake.nextDir) {
         case 'w':
-            if (!isEmpty(x - 1, y))
-                return confirmKill({ x: x - 1, y: y });
-            else
-                return { x: x - 1, y: y };
+            x--;
+            break;
         case 'a':
-            if (!isEmpty(x, y - 1))
-                return confirmKill({ x: x, y: y - 1 });
-            else
-                return { x: x, y: y - 1 };
+            y--;
+            break;
         case 's':
-            if (!isEmpty(x + 1, y))
-                return confirmKill({ x: x + 1, y: y });
-            else
-                return { x: x + 1, y: y };
+            x++;
+            break;
         case 'd':
-            if (!isEmpty(x, y + 1))
-                return confirmKill({ x: x, y: y + 1 });
-            else
-                return { x: x, y: y + 1 };
+            y++;
+            break;
+        default:
+            return { x: -1, y: -1 };
     }
+    if (!isEmpty(x, y))
+        return confirmKill({ x, y });
+    else
+        return { x, y };
     function confirmKill(c) {
         if (recurse)
             return c;
@@ -111,7 +107,6 @@ function newLoc(p, processed, recurse = false) {
         }
         return { x: -1, y: -1 };
     }
-    return { x: -1, y: -1 };
 }
 exports.newLoc = newLoc;
 //# sourceMappingURL=helpers.js.map
