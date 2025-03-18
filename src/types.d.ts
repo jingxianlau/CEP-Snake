@@ -1,15 +1,22 @@
 interface Space {
   filled: boolean;
   playerId: string;
-  segmentNum: number;
   isApple: boolean;
+}
+
+interface Segment {
+  num: number;
+  coords: { x: number; y: number };
 }
 
 interface Player {
   id: string;
   colour: string;
-  dir: string;
-  nextDir: string;
-  size: number;
-  prev: { x: number; y: number };
+  username: string;
+  points: number;
+  snake: {
+    segments: Segment[];
+    dir: string;
+    nextDir: string;
+  };
 }

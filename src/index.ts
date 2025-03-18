@@ -7,25 +7,24 @@ import {
   randomColour,
   randomDir,
   randomSpace,
-  isEmpty,
   findId,
   genApple,
-  moveSnake
+  newLoc,
+  clear
 } from './helpers';
 
-const tickRate = 2;
+const tickRate = 5;
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < 75; i++) {
   let arr: Space[] = [];
-  for (let j = 0; j < 100; j++) {
+  for (let j = 0; j < 120; j++) {
     arr.push({
       filled: false,
       playerId: '',
-      segmentNum: 0,
       isApple: false
     });
   }
@@ -41,16 +40,23 @@ io.on('connection', socket => {
   const spawnDir = randomDir();
   players.push({
     id: socket.id,
+    username: '',
+    points: 0,
     colour: randomColour(),
-    dir: spawnDir,
-    nextDir: spawnDir,
-    size: 1,
-    prev: { x: spawn.x, y: spawn.y }
+    snake: {
+      segments: [
+        {
+          num: 0,
+          coords: spawn
+        }
+      ],
+      dir: spawnDir,
+      nextDir: spawnDir
+    }
   });
   grid[spawn.x][spawn.y] = {
     filled: true,
     playerId: socket.id,
-    segmentNum: 1,
     isApple: false
   };
 
@@ -58,12 +64,12 @@ io.on('connection', socket => {
   io.sockets.emit('players', players);
 
   socket.on('action', data => {
-    const { player, dir } = data;
+    const { dir } = data;
     if (!['w', 'a', 's', 'd'].includes(dir)) return;
 
-    const pl = findId(player);
-    if (!pl) return;
-    switch (pl.dir) {
+    const p = findId(socket.id);
+    if (!p) return;
+    switch (p.snake.dir) {
       case 'w':
         if (dir == 's') return;
         break;
@@ -78,7 +84,7 @@ io.on('connection', socket => {
         break;
     }
 
-    pl.nextDir = dir;
+    p.snake.nextDir = dir;
   });
 
   socket.on('disconnect', () => {
@@ -98,71 +104,42 @@ setInterval(() => {
 }, 1000 / tickRate);
 
 function update() {
-  let moved: String[] = [];
-  for (let i = 0; i < grid.length; i++) {
-    for (let j = 0; j < grid[i].length; j++) {
-      if (grid[i][j].filled && !findId(grid[i][j].playerId)) {
-        grid[i][j] = {
-          filled: false,
-          playerId: '',
-          segmentNum: 0,
-          isApple: false
-        };
-      }
-      if (grid[i][j].filled && grid[i][j].segmentNum === 1) {
-        if (moved.find(e => e === grid[i][j].playerId)) continue;
-        moved.push(grid[i][j].playerId);
-        let newCoords = null;
-        const pl = findId(grid[i][j].playerId);
-        if (!pl) continue;
-        switch (pl.nextDir) {
-          case 'w':
-            if (!isEmpty(i - 1, j)) {
-              kill(grid[i][j].playerId);
-              continue;
-            } else newCoords = { x: i - 1, y: j };
-            break;
-          case 'a':
-            if (!isEmpty(i, j - 1)) {
-              kill(grid[i][j].playerId);
-              continue;
-            } else newCoords = { x: i, y: j - 1 };
-            break;
-          case 's':
-            if (!isEmpty(i + 1, j)) {
-              kill(grid[i][j].playerId);
-              continue;
-            } else newCoords = { x: i + 1, y: j };
-            break;
-          case 'd':
-            if (!isEmpty(i, j + 1)) {
-              kill(grid[i][j].playerId);
-              continue;
-            } else newCoords = { x: i, y: j + 1 };
-            break;
-        }
-        pl.dir = pl.nextDir;
-
-        // it somehow doesn't break if it dies????
-        if (!newCoords || !isEmpty(newCoords.x, newCoords.y)) continue;
-
-        // do DFS to move tail and update segment numbers
-        moveSnake(i, j, newCoords.x, newCoords.y);
-      }
+  const hitlist: string[] = []; // can't be killed at runtime in case multiple ppl die
+  const processed: string[] = []; // helpful for edge case where snake collides with tail
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i];
+    const c = newLoc(p, processed); // gets new head location based on direction of snake
+    if (c.x === -1 && c.y === -1) {
+      hitlist.push(p.id);
+      continue;
     }
+
+    p.snake.segments.push({ num: p.snake.segments.length, coords: c });
+
+    if (!grid[c.x][c.y].isApple) {
+      const tail = p.snake.segments.shift();
+      if (tail) clear(tail.coords.x, tail.coords.y);
+      p.snake.segments.map(s => s.num--);
+    }
+
+    grid[c.x][c.y] = {
+      filled: true,
+      playerId: p.id,
+      isApple: false
+    };
+
+    p.snake.dir = p.snake.nextDir;
+
+    processed.push(p.id);
   }
+
+  for (const p of hitlist) kill(p);
 }
 
 export function kill(id: string) {
   for (let x = 0; x < grid.length; x++)
     for (let y = 0; y < grid[x].length; y++)
-      if (grid[x][y].playerId === id)
-        grid[x][y] = {
-          filled: false,
-          playerId: '',
-          segmentNum: 0,
-          isApple: false
-        };
+      if (grid[x][y].playerId === id) clear(x, y);
   io.to(id).emit('dead');
 }
 

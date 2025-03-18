@@ -32,68 +32,30 @@ export function randomSpace(spawnMode = 0) {
   } while (
     grid[x][y].filled ||
     grid[x][y].isApple ||
-    (spawnMode && !spaceAround(x, y))
+    (spawnMode && !spaceAround(x, y)) // ensure 3x3 open space when spawning
   );
   return { x, y };
 }
 
+// if has player or is border
+// apples count as empty
 export function isEmpty(x: number, y: number) {
   return (
     x >= 0 &&
     y >= 0 &&
-    x < grid[0].length &&
-    y < grid.length &&
+    x < grid.length &&
+    y < grid[0].length &&
     !grid[x][y].filled
   );
 }
 
-export function moveSnake(x: number, y: number, nx: number, ny: number) {
-  const pl = findId(grid[x][y].playerId);
-  if (!pl) return;
-
-  const isApple = grid[nx][ny].isApple;
-
-  grid[nx][ny] = Object.assign({}, grid[x][y]);
-
-  let segment = { x: nx, y: ny };
-  for (let len = 0; len < pl.size; len++)
-    for (let i = 0; i < 4; i++) {
-      if (
-        segment.x + ax[i] < 0 ||
-        segment.y + ay[i] < 0 ||
-        segment.x + ax[i] >= grid.length ||
-        segment.y + ay[i] >= grid[0].length
-      )
-        continue;
-
-      if (
-        grid[segment.x + ax[i]][segment.y + ay[i]].filled &&
-        grid[segment.x + ax[i]][segment.y + ay[i]].playerId == pl.id &&
-        grid[segment.x + ax[i]][segment.y + ay[i]].segmentNum == len + 1
-      ) {
-        // if next segment is the end, no apple collected (lose the end)
-        if (len + 1 == pl.size && !isApple) {
-          pl.prev = { x: segment.x, y: segment.y };
-          grid[segment.x + ax[i]][segment.y + ay[i]] = {
-            filled: false,
-            playerId: '',
-            segmentNum: 0,
-            isApple: false
-          };
-        } else {
-          // next segment not the end, increment segnum
-          grid[segment.x + ax[i]][segment.y + ay[i]].segmentNum++;
-          segment.x += ax[i];
-          segment.y += ay[i];
-        }
-        break;
-      }
-    }
-
-  if (isApple) {
-    pl.size++;
-    genApple();
-  }
+export function clear(x: number, y: number) {
+  if (x >= 0 && y >= 0 && x < grid.length && y < grid[0].length)
+    grid[x][y] = {
+      filled: false,
+      playerId: '',
+      isApple: false
+    };
 }
 
 export function genApple(num: number = 1) {
@@ -103,7 +65,6 @@ export function genApple(num: number = 1) {
     grid[spawn.x][spawn.y] = {
       filled: false,
       playerId: '',
-      segmentNum: 0,
       isApple: true
     };
   }
@@ -113,4 +74,51 @@ export function findId(id: string): Player | null {
   let player = players.find(val => val.id === id);
   if (!player) return null;
   return player;
+}
+
+// returns new location of snake head
+// also processes deaths
+// returns { x: -1, y: -1 } if it dies
+export function newLoc(p: Player, processed: string[], recurse = false) {
+  const head = p.snake.segments[p.snake.segments.length - 1];
+  const { x, y } = head.coords;
+  switch (p.snake.nextDir) {
+    case 'w':
+      if (!isEmpty(x - 1, y)) return confirmKill({ x: x - 1, y: y });
+      else return { x: x - 1, y: y };
+    case 'a':
+      if (!isEmpty(x, y - 1)) return confirmKill({ x: x, y: y - 1 });
+      else return { x: x, y: y - 1 };
+    case 's':
+      if (!isEmpty(x + 1, y)) return confirmKill({ x: x + 1, y: y });
+      else return { x: x + 1, y: y };
+    case 'd':
+      if (!isEmpty(x, y + 1)) return confirmKill({ x: x, y: y + 1 });
+      else return { x: x, y: y + 1 };
+  }
+
+  // EDGE CASE (snake hits tail)
+  function confirmKill(c: { x: number; y: number }) {
+    if (recurse) return c; // stop recursion chain, since we only care abt if its an apple (see below)
+    if (c.x < 0 || c.y < 0 || c.x >= grid.length || c.y >= grid[0].length)
+      return { x: -1, y: -1 }; // died of natural causes
+
+    const killer = players.find(p => p.id === grid[c.x][c.y].playerId);
+    if (
+      killer?.snake.segments[0].coords.x === c.x &&
+      killer?.snake.segments[0].coords.y === c.y && // tail is hit
+      !processed.includes(killer.id) // hasn't been processed yet
+    ) {
+      const c2 = newLoc(killer, processed, true);
+      if (
+        c2.x === -1 &&
+        c2.y === -1 &&
+        !grid[c2.x][c2.y].isApple // person it collided with isn't getting an apple (edge case passed)
+      )
+        return c; // bro still lives
+    }
+    return { x: -1, y: -1 };
+  }
+
+  return { x: -1, y: -1 }; // should never run
 }
