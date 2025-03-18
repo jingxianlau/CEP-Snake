@@ -1,12 +1,12 @@
 let grid = [];
 let players = [];
+let p;
 let dead = false;
 
 function setup() {
   // Create canvas and attach to container
-  canvas = createCanvas(1200, 750);
-  // canvas.parent('canvas-container');
-  background(200);
+  canvas = createCanvas(1200, 780);
+  background('black');
 
   // Connect to the server
   socket = io();
@@ -14,6 +14,7 @@ function setup() {
   // Listen for incoming drawing data
   socket.on('grid', data => {
     if (!dead) grid = data;
+    p = players.find(a => a.id == socket.id);
   });
   socket.on('players', data => {
     if (!dead) players = data;
@@ -26,6 +27,7 @@ function setup() {
 }
 
 function draw() {
+  background('black');
   if (grid.length == 0) return;
 
   for (let i = 0; i < grid.length; i++) {
@@ -41,6 +43,23 @@ function draw() {
       square(j * 10, i * 10, 10);
     }
   }
+
+  if (!p) return;
+
+  fill('white');
+  textSize(20);
+  text(`Mana: ${Math.floor(p.mana)}`, 10, 775);
+
+  textSize(15);
+  text(
+    `(Space) - Dash: ${
+      Math.ceil(p.dash) == 0 ? 'READY' : Math.ceil(p.dash / 5) + 's'
+    }`,
+    125,
+    772
+  );
+  text(`(Q) - U-Turn: 20 Mana`, 300, 772);
+  text(`(E) - Super-Dash: 20 Mana`, 465, 772);
 }
 
 function keyPressed() {
