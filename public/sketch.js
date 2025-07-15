@@ -6,6 +6,22 @@ let screenShake = false;
 let screenShakeCoeff = 5;
 let screenShakeTimer = 20;
 
+let handPose,
+  video,
+  hands = [],
+  toDetect = true;
+
+function preload() {
+  handPose = ml5.handPose();
+  video = createCapture(VIDEO);
+  video.size(640, 480);
+  video.hide();
+}
+
+function gotHands(results) {
+  hands = results;
+}
+
 function shake(coeff = 5, timer = 5) {
   screenShake = true;
   screenShakeCoeff = coeff;
@@ -16,6 +32,8 @@ function setup() {
   // Create canvas and attach to container
   canvas = createCanvas(1200, 780);
   background('black');
+
+  handPose.detectStart(video, gotHands);
 
   // Connect to the server
   socket = io();
@@ -37,7 +55,6 @@ function setup() {
     p = players.find(a => a.id == socket.id);
 
     if (!p) return;
-    console.log(p.snake.segments.length, len);
     if (p.snake.segments.length > len) shake(2, 2);
     if (p.dash == 0 && cd !== 0) shake(3, 1);
     if (p.mana >= 20 && oldmana < 20) shake(6, 2);
@@ -91,24 +108,38 @@ function draw() {
   );
   text(`(Q) - U-Turn: 20 Mana`, 300, 772);
   text(`(E) - Super-Dash: 20 Mana`, 465, 772);
-}
 
-function keyPressed() {
-  if (['w', 'a', 's', 'd'].includes(key))
-    socket.emit('action', { player: socket.id, dir: key });
+  if (hands.length > 0) {
+    let hand = hands[0];
+    let dir = hand.handedness;
+    console.log(dir, p.snake.dir);
 
-  if (p.dash == 0) {
-    if (key == ' ') {
-      shake(3, 3);
-      socket.emit('ability', 'dash');
+    if (toDetect == false) return;
+    toDetect = false;
+    if (p.snake.dir == 'w') {
+      socket.emit('action', {
+        player: socket.id,
+        dir: dir == 'Left' ? 'd' : 'a'
+      });
+    } else if (p.snake.dir == 'a') {
+      socket.emit('action', {
+        player: socket.id,
+        dir: dir == 'Left' ? 'w' : 's'
+      });
+    } else if (p.snake.dir == 's') {
+      socket.emit('action', {
+        player: socket.id,
+        dir: dir == 'Left' ? 'a' : 'd'
+      });
+    } else {
+      socket.emit('action', {
+        player: socket.id,
+        dir: dir == 'Left' ? 's' : 'w'
+      });
     }
-  } else if (p.mana < 20) return;
-  if (key == 'e') {
-    shake(10, 10);
-    socket.emit('ability', 'dash5');
-  } else if (key == 'q') {
-    shake(1, 10);
-    socket.emit('ability', 'uturn');
+  } else {
+    toDetect = true;
+    console.log('detecting');
   }
 }
 
